@@ -1,0 +1,19 @@
+<Graph Description="" Group="" enabled="1" MultiPlayer="ClientServer">
+ <Nodes>
+  <Node Id="1" Class="Plugin_Camera:PlayerCamera" pos="-110,-60,0" flags="0">
+   <Inputs entityId="0" collision="1" thirdperson="1" FOV="75" MinPitch="-90" MinPitchOffsetPosition="0,0,0" MaxPitch="90" MaxPitchOffsetPosition="0,0,0" TargetOffsetPosition="0,0.1,0.5" CameraOffsetPosition="0,0,0" CameraOffsetRotation="0,0,0" PositionAnchor="3" bone_PositionAnchor="weapon_bone" RotationAnchor="3" bone_RotationAnchor="weapon_bone" aimfix="0"/>
+  </Node>
+  <Node Id="2" Class="Start" pos="-270,-90,0" flags="0">
+   <Inputs InGame="1" InEditor="1"/>
+  </Node>
+  <Node Id="3" Class="Game:LocalPlayer" pos="-110,-130,0" flags="0">
+   <Inputs />
+  </Node>
+ </Nodes>
+ <Edges>
+  <Edge nodeIn="3" nodeOut="2" portIn="update" portOut="output" enabled="1"/>
+  <Edge nodeIn="1" nodeOut="3" portIn="Activate" portOut="entityId" enabled="1"/>
+  <Edge nodeIn="1" nodeOut="3" portIn="entityId" portOut="entityId" enabled="1"/>
+ </Edges>
+ <GraphTokens />
+</Graph>

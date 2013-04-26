@@ -40,6 +40,7 @@
     <None Include="..\tools\stylecode.bat">
       <Filter>Tools</Filter>
     </None>
+    <None Include="..\changelog.md" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\StdAfx.cpp">

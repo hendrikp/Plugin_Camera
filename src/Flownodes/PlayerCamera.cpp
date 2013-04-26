@@ -39,6 +39,7 @@ namespace CameraPlugin
 
                 EIP_AROT,
                 EIP_AROTBONE,
+                EIP_AIMFIX_EXPERIMENT,
             };
 
             enum EAnchorType
@@ -100,7 +101,8 @@ namespace CameraPlugin
                     InputPortConfig<string>( "bone_PositionAnchor",  "",                 _HELP( "Position Anchor Bone" ),                  "Position Anchor Bone",         _UICONFIG( "ref_entity=entityId" ) ),
                     InputPortConfig<int>( "RotationAnchor",          ETYPE_VIEW,         _HELP( "Anchor Rotation" ),                       "Rotation Anchor",              _UICONFIG( "enum_int:Entity=1,View=2,Bone=3" ) ),
                     InputPortConfig<string>( "bone_RotationAnchor",  "",                 _HELP( "Rotation Anchor Bone" ),                  "Rotation Anchor Bone",         _UICONFIG( "ref_entity=entityId" ) ),
-                    {0},
+                    InputPortConfig<bool>( "aimfix",              false,               _HELP( "Experimental Aim correction" ),       "Experimental Aim correction" ),
+                    InputPortConfig_Null(),
                 };
 
                 config.pInputPorts = inputs;
@@ -426,46 +428,50 @@ namespace CameraPlugin
                                 vecCamRot = sViewPar->rotation;
                                 m_pCameraEnt->SetRotation( vecCamRot );
 
-                                const int objects = ent_all;
-                                const int flags = ( geom_colltype_ray << rwi_colltype_bit ) | rwi_colltype_any | ( 10 & rwi_pierceability_mask ) | ( geom_colltype14 << rwi_colltype_bit );
-
-                                IItem* pItem = pActor->GetCurrentItem();
-                                IWeapon* pWeapon = pItem ? pItem->GetIWeapon() : NULL;
-
-                                IPhysicalEntity* pSkipEntities[11];
-                                int nSkip = 0;
-
-                                if ( pWeapon )
+                                // Aimfix experiment
+                                if ( GetPortBool( pActInfo, EIP_AIMFIX_EXPERIMENT ) )
                                 {
-                                    // CWeapon
-                                    //nSkip = pWeapon-> GetSkipEntities( pWeapon, pSkipEntities, 10 );
-                                }
+                                    const int objects = ent_all;
+                                    const int flags = ( geom_colltype_ray << rwi_colltype_bit ) | rwi_colltype_any | ( 10 & rwi_pierceability_mask ) | ( geom_colltype14 << rwi_colltype_bit );
 
-                                pSkipEntities[nSkip++] = pActor->GetEntity()->GetPhysics();
+                                    IItem* pItem = pActor->GetCurrentItem();
+                                    IWeapon* pWeapon = pItem ? pItem->GetIWeapon() : NULL;
 
-                                Vec3 posweapon = sViewPar->position;
-                                Vec3 dirweapon = sViewPar->rotation.GetColumn1();
+                                    IPhysicalEntity* pSkipEntities[11];
+                                    int nSkip = 0;
 
-                                if ( pWeapon )
-                                {
-                                    Vec3 probhit = Vec3( 0, 0, 0 );
-                                    posweapon = pWeapon->GetFiringPos( probhit );
-                                    dirweapon = pWeapon->GetFiringDir( posweapon, probhit );
-                                }
+                                    if ( pWeapon )
+                                    {
+                                        // CWeapon
+                                        //nSkip = pWeapon-> GetSkipEntities( pWeapon, pSkipEntities, 10 );
+                                    }
 
-                                dirweapon.Normalize();
+                                    pSkipEntities[nSkip++] = pActor->GetEntity()->GetPhysics();
 
-                                ray_hit rayhit;
+                                    Vec3 posweapon = sViewPar->position;
+                                    Vec3 dirweapon = sViewPar->rotation.GetColumn1();
 
-                                if ( gEnv->pPhysicalWorld->RayWorldIntersection( posweapon, dirweapon * WEAPON_HIT_RANGE, objects, flags, &rayhit, 1, pSkipEntities, nSkip ) )
-                                {
-                                    gEnv->pRenderer->GetIRenderAuxGeom()->DrawSphere( posweapon, 0.1f, ColorB ( 255, 128, 0 ) );
-                                    gEnv->pRenderer->GetIRenderAuxGeom()->DrawLine( posweapon, ColorB ( 128, 0, 0 ), rayhit.pt, ColorB ( 128, 0, 0 ), 6.0f );
+                                    if ( pWeapon )
+                                    {
+                                        Vec3 probhit = Vec3( 0, 0, 0 );
+                                        posweapon = pWeapon->GetFiringPos( probhit );
+                                        dirweapon = pWeapon->GetFiringDir( posweapon, probhit );
+                                    }
 
-                                    Vec3 testv = rayhit.pt - vecCamPos;
-                                    testv.Normalize();
-                                    Quat testr = Quat::CreateRotationVDir( testv, 0 );
-                                    m_pCameraEnt->SetRotation( testr );
+                                    dirweapon.Normalize();
+
+                                    ray_hit rayhit;
+
+                                    if ( gEnv->pPhysicalWorld->RayWorldIntersection( posweapon, dirweapon * WEAPON_HIT_RANGE, objects, flags, &rayhit, 1, pSkipEntities, nSkip ) )
+                                    {
+                                        gEnv->pRenderer->GetIRenderAuxGeom()->DrawSphere( posweapon, 0.1f, ColorB ( 255, 128, 0 ) );
+                                        gEnv->pRenderer->GetIRenderAuxGeom()->DrawLine( posweapon, ColorB ( 128, 0, 0 ), rayhit.pt, ColorB ( 128, 0, 0 ), 6.0f );
+
+                                        Vec3 testv = rayhit.pt - vecCamPos;
+                                        testv.Normalize();
+                                        Quat testr = Quat::CreateRotationVDir( testv, 0 );
+                                        m_pCameraEnt->SetRotation( testr );
+                                    }
                                 }
                             }
 
