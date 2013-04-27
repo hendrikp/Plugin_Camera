@@ -16,3 +16,4 @@ Flownodes
 =========
 * ```Plugin_Camera:PlayerCamera```
 
+![Info Graphic](https://raw.github.com/hendrikp/Plugin_Camera/master/readme.png)
