@@ -464,8 +464,8 @@ namespace CameraPlugin
 
                                     if ( gEnv->pPhysicalWorld->RayWorldIntersection( posweapon, dirweapon * WEAPON_HIT_RANGE, objects, flags, &rayhit, 1, pSkipEntities, nSkip ) )
                                     {
-                                        gEnv->pRenderer->GetIRenderAuxGeom()->DrawSphere( posweapon, 0.1f, ColorB ( 255, 128, 0 ) );
-                                        gEnv->pRenderer->GetIRenderAuxGeom()->DrawLine( posweapon, ColorB ( 128, 0, 0 ), rayhit.pt, ColorB ( 128, 0, 0 ), 6.0f );
+                                        gEnv->pRenderer->GetIRenderAuxGeom()->DrawSphere( posweapon, 0.1f, ColorB( 255, 128, 0 ) );
+                                        gEnv->pRenderer->GetIRenderAuxGeom()->DrawLine( posweapon, ColorB( 128, 0, 0 ), rayhit.pt, ColorB( 128, 0, 0 ), 6.0f );
 
                                         Vec3 testv = rayhit.pt - vecCamPos;
                                         testv.Normalize();
