@@ -1,17 +1,42 @@
-@echo off
+@ECHO OFF
+ECHO ***
+ECHO *** Styling code according to your AStyle guidelines.
+ECHO ***
 
-cmd /C "_stylehelper.bat ..\src cpp" 2>NUL
-cmd /C "_stylehelper.bat ..\src h" 2>NUL
-cmd /C "_stylehelper.bat ..\src hpp" 2>NUL
-cmd /C "_stylehelper.bat ..\src c" 2>NUL
-cmd /C "_stylehelper.bat ..\src cc" 2>NUL
-cmd /C "_stylehelper.bat ..\src inc" 2>NUL
+REM Make an Astyle folder if they don't have one.
+IF EXIST "%userprofile%\Documents\AStyle" GOTO TEAMCHECK
+@ECHO *** Making a new AStyle folder to hold the styles.
+MKDIR "%userprofile%\Documents\AStyle"
 
-cmd /C "_stylehelper.bat ..\inc cpp" 2>NUL
-cmd /C "_stylehelper.bat ..\inc h" 2>NUL
-cmd /C "_stylehelper.bat ..\inc hpp" 2>NUL
-cmd /C "_stylehelper.bat ..\inc c" 2>NUL
-cmd /C "_stylehelper.bat ..\inc cc" 2>NUL
-cmd /C "_stylehelper.bat ..\inc inc" 2>NUL
+:TEAMCHECK
+REM Use their personal style or a style suitable for source control / team?
+IF NOT "%1"=="" GOTO TEAMSTYLE
 
-pause
+:PERSONALSTYLE
+IF EXIST "%userprofile%\Documents\AStyle\%username%.AStyle" GOTO PERSONALSTYLE2
+@ECHO *** Copying the default style to your documents\astyle folder for future customisation.
+COPY default.AStyle "%userprofile%\Documents\AStyle\%username%.AStyle"
+
+:PERSONALSTYLE2
+ECHO *** Applying personal style preferences.
+ECHO ***
+AStyle --options="%userprofile%\Documents\AStyle\%username%.AStyle" --recursive -n ..\src\*.h
+AStyle --options="%userprofile%\Documents\AStyle\%username%.AStyle" --recursive -n ..\src\*.cpp
+AStyle --options="%userprofile%\Documents\AStyle\%username%.AStyle" --recursive -n ..\inc\*.h
+GOTO END
+
+:TEAMSTYLE
+IF EXIST "%userprofile%\Documents\AStyle\%1.AStyle" GOTO TEAMSTYLE2
+@ECHO *** Creating a team / source control style in your documents\astyle folder.
+COPY default.AStyle "%userprofile%\Documents\AStyle\%1.AStyle"
+
+:TEAMSTYLE2
+ECHO *** Applying team (%1) style preferences.
+ECHO ***
+AStyle --options="%userprofile%\Documents\AStyle\%1.AStyle" --recursive -n ..\src\*.h
+AStyle --options="%userprofile%\Documents\AStyle\%1.AStyle" --recursive -n ..\src\*.cpp
+AStyle --options="%userprofile%\Documents\AStyle\%1.AStyle" --recursive -n ..\inc\*.h
+GOTO END
+
+:END
+PAUSE
