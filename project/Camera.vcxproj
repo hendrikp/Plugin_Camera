@@ -42,6 +42,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\inc\IPluginCamera.h" />
+    <ClInclude Include="..\src\CameraCommon.h" />
     <ClInclude Include="..\src\CPluginCamera.h" />
     <ClInclude Include="..\src\StdAfx.h" />
     <ClInclude Include="resource.h" />

@@ -7,7 +7,18 @@
 
 #include <Game.h>
 #include <Cry_Camera.h>
+
+#if CDK_VERSION < 350
 #include <Camera/CameraCommon.h>
+#else
+#include <CameraCommon.h>
+#endif
+
+#if CDK_VERSION >= 350
+#include <IParticles.h>
+#include <CryListenerSet.h>
+#endif
+
 #include <Actor.h>
 #include <IViewSystem.h>
 #include <Single.h>
@@ -140,17 +151,17 @@ namespace CameraPlugin
                                 spawn.sName = "PlayerCamera";
                                 spawn.pClass = gEnv->pEntitySystem->GetClassRegistry()->GetDefaultClass();
                                 spawn.vPosition = gEnv->pSystem->GetViewCamera().GetPosition();
-                                spawn.qRotation = gEnv->pEntitySystem->GetEntity( gEnv->pGameFramework->GetClientActorId() )->GetRotation();
+                                spawn.qRotation = gEnv->pEntitySystem->GetEntity( gEnv->pGame->GetIGameFramework()->GetClientActorId() )->GetRotation();
                                 m_pCameraEnt = gEnv->pEntitySystem->SpawnEntity( spawn );
 
-                                m_pCameraView = gEnv->pGameFramework->GetIViewSystem()->GetViewByEntityId( m_pCameraEnt->GetId(), true );
+                                m_pCameraView = gEnv->pGame->GetIGameFramework()->GetIViewSystem()->GetViewByEntityId( m_pCameraEnt->GetId(), true );
 
                                 if ( m_pCameraView )
                                 {
                                     SViewParams sViewPar = *( m_pCameraView->GetCurrentParams() );
                                     sViewPar.fov = DEG2RAD( 75 );
                                     m_pCameraView->SetCurrentParams( sViewPar );
-                                    gEnv->pGameFramework->GetIViewSystem()->SetActiveView( m_pCameraView );
+                                    gEnv->pGame->GetIGameFramework()->GetIViewSystem()->SetActiveView( m_pCameraView );
                                 }
                             }
                         }
@@ -170,12 +181,12 @@ namespace CameraPlugin
 
                             if ( m_pEntity )
                             {
-                                pActor = gEnv->pGameFramework->GetIActorSystem()->GetActor( m_pEntity->GetId() );
+                                pActor = gEnv->pGame->GetIGameFramework()->GetIActorSystem()->GetActor( m_pEntity->GetId() );
                             }
 
                             else
                             {
-                                pActor = gEnv->pGameFramework->GetClientActor();
+                                pActor = gEnv->pGame->GetIGameFramework()->GetClientActor();
                                 m_pEntity = pActor->GetEntity();
                             }
 
@@ -208,7 +219,7 @@ namespace CameraPlugin
 
                             if ( m_pEntity )
                             {
-                                IViewSystem* pViewSystem = gEnv->pGameFramework->GetIViewSystem();
+                                IViewSystem* pViewSystem = gEnv->pGame->GetIGameFramework()->GetIViewSystem();
 
                                 IView* pView = NULL;
 

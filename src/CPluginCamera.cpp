@@ -41,7 +41,7 @@ namespace CameraPlugin
                     }
 
                     // Unregister game objects
-                    if ( gEnv && gEnv->pGameFramework && gEnv->pGame )
+                    if ( gEnv && gEnv->pGame && gEnv->pGame->GetIGameFramework() )
                     {
                         // ...
                     }
@@ -73,7 +73,7 @@ namespace CameraPlugin
             }
 
             // Register Game Objects
-            if ( gEnv && gEnv->pGameFramework )
+            if ( gEnv && gEnv->pGame && gEnv->pGame->GetIGameFramework() )
             {
                 // TODO: Register Game Objects here if you have some
                 // ...

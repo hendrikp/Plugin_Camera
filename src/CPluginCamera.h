@@ -2,10 +2,10 @@
 
 #pragma once
 
+#include <IPluginBase.h>
 #include <Game.h>
 
 #include <IPluginManager.h>
-#include <IPluginBase.h>
 #include <CPluginBase.hpp>
 
 #include <IPluginCamera.h>
@@ -38,7 +38,7 @@ namespace CameraPlugin
 
             const char* GetVersion() const
             {
-                return "1.0.0.0";
+                return "0.2.1.0";
             };
 
             const char* GetName() const
