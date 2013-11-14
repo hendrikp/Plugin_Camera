@@ -343,6 +343,7 @@ namespace CameraPlugin
                                 // Apply Rotation
                                 float fAltitude = CLAMP( temp.y, DEG2RAD( GetPortFloat( pActInfo, EIP_MINP ) ), DEG2RAD( GetPortFloat( pActInfo, EIP_MAXP ) ) ); // Using Pitch Limit
                                 local_sphereCamTarget.m_fPitch  += fAltitude;
+
                                 //local_sphereCamTarget.m_fYaw  += temp.x; // TODO: if needed then additional input reqiured
 
                                 // Handle not supported Angles

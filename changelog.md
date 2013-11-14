@@ -1,4 +1,4 @@
-Camera Plugin 0.2.1 (04.11.2013)
+Camera Plugin 0.2.1 (18.11.2013)
 ---------------------------
 Experimental Release for CryEngine 3.5.4 (32/64 bit)
 

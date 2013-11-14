@@ -67,7 +67,7 @@ namespace CameraPlugin
 
             void* GetConcreteInterface( const char* sInterfaceVersion )
             {
-                return static_cast < IPluginCamera* >( this );
+                return static_cast <IPluginCamera*>( this );
             };
 
             // IPluginCamera
