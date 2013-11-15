@@ -12,7 +12,9 @@ if not (%~1)==() (
 
 set EXTENSIONS=h hpp c cc cpp
 
-FOR %%i IN (%EXTENSIONS%) DO (
+for %%i in (%EXTENSIONS%) do (
   "%ASTYLE%" --options="%APROFILE%" -RnqZ %~dp0..\src\*.%%i 2> nul
   "%ASTYLE%" --options="%APROFILE%" -RnqZ %~dp0..\inc\*.%%i 2> nul
 )
+
+exit /B 0

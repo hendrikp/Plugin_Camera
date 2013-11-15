@@ -41,7 +41,6 @@ namespace CameraPlugin
                 EIP_MAXP,
                 EIP_MAXPOFFSETPOS,
                 EIP_TOFFSETPOS,
-                //  EIP_TOFFSETROT,
                 EIP_COFFSETPOS,
                 EIP_COFFSETROT,
 
@@ -50,7 +49,8 @@ namespace CameraPlugin
 
                 EIP_AROT,
                 EIP_AROTBONE,
-                EIP_AIMFIX_EXPERIMENT,
+                EIP_AIMFIX,
+                EIP_AIMDEBUG,
             };
 
             enum EAnchorType
@@ -58,6 +58,12 @@ namespace CameraPlugin
                 ETYPE_ENTITY = 1,
                 ETYPE_VIEW,
                 ETYPE_BONE,
+            };
+
+            enum ECollisionType
+            {
+                ECOLLISION_NONE = 1,
+                ECOLLISION_BASIC,
             };
 
             IEntity* m_pEntity;
@@ -93,8 +99,8 @@ namespace CameraPlugin
                 {
                     InputPortConfig_Void( "Activate",                                    _HELP( "Activate" ) ),
 
-                    InputPortConfig<bool>( "collision",              true,               _HELP( "WIP Enables collision detection" ),       "WIP collision" ),
-                    InputPortConfig<bool>( "thirdperson",            true,               _HELP( "WIP Enables 3rd person mode" ),           "WIP thirdperson" ),
+                    InputPortConfig<int>( "collision",               ECOLLISION_BASIC,   _HELP( "Enables collision detection" ),       "Collision",                        _UICONFIG( "enum_int:None=1,Basic=2" ) ),
+                    InputPortConfig<bool>( "thirdperson",            true,               _HELP( "Enables 3rd person mode" ),           "Thirdperson" ),
 
                     InputPortConfig<float>( "FOV",                   75,                 _HELP( "Field of View [DEG]" ) ),
 
@@ -104,7 +110,7 @@ namespace CameraPlugin
                     InputPortConfig<Vec3>( "MaxPitchOffsetPosition", Vec3( ZERO ),         _HELP( "Max Pitch Position Offset (local XYZ)" ), "MaxPitch Position Offset" ),
 
                     InputPortConfig<Vec3>( "TargetOffsetPosition",   Vec3( 0.5, -2, 1.5 ), _HELP( "Target Position Offset (local XYZ)" ),    "Target Offset Position" ),
-                    //InputPortConfig<Vec3>("TargetOffsetRotation", Vec3(ZERO),         _HELP("Target Position Offset (YPR [DEG])"),    "WIP Target Offset Rotation"),
+
                     InputPortConfig<Vec3>( "CameraOffsetPosition",   Vec3( ZERO ),         _HELP( "Camera Position Offset (local XYZ)\r\nA Sphere around the Camera Target will be created with this offset as the origin." ),   "Camera Offset Position" ),
                     InputPortConfig<Vec3>( "CameraOffsetRotation",   Vec3( ZERO ),         _HELP( "Camera Rotation Offset (YPR [DEG])" ),    "Camera Rotation Offset" ),
 
@@ -112,7 +118,9 @@ namespace CameraPlugin
                     InputPortConfig<string>( "bone_PositionAnchor",  "",                 _HELP( "Position Anchor Bone" ),                  "Position Anchor Bone",         _UICONFIG( "ref_entity=entityId" ) ),
                     InputPortConfig<int>( "RotationAnchor",          ETYPE_VIEW,         _HELP( "Anchor Rotation" ),                       "Rotation Anchor",              _UICONFIG( "enum_int:Entity=1,View=2,Bone=3" ) ),
                     InputPortConfig<string>( "bone_RotationAnchor",  "",                 _HELP( "Rotation Anchor Bone" ),                  "Rotation Anchor Bone",         _UICONFIG( "ref_entity=entityId" ) ),
-                    InputPortConfig<bool>( "aimfix",              false,               _HELP( "Experimental Aim correction" ),       "Experimental Aim correction" ),
+                    InputPortConfig<bool>( "aimfix",                false,               _HELP( "Experimental Aim correction" ),           "Aim Correction" ),
+                    InputPortConfig<bool>( "aimdebug",              false,               _HELP( "Draw Aim debug information" ),            "Aim Debug" ),
+
                     InputPortConfig_Null(),
                 };
 
@@ -190,6 +198,12 @@ namespace CameraPlugin
                                 m_pEntity = pActor->GetEntity();
                             }
 
+                            // Handle Third person
+                            if ( pActor && pActor->IsThirdPerson( ) != GetPortBool( pActInfo, EIP_3RDPERSON ) )
+                            {
+                                pActor->ToggleThirdPerson( );
+                            }
+
                             // Get Animated Character
                             IAnimatedCharacter* pAnimCharacter = NULL;
 
@@ -215,7 +229,7 @@ namespace CameraPlugin
                             }
 
                             // Get View
-                            const SViewParams* sViewPar = NULL;
+                            const SViewParams* sEntityViewPar = NULL;
 
                             if ( m_pEntity )
                             {
@@ -225,19 +239,20 @@ namespace CameraPlugin
 
                                 if ( pViewSystem )
                                 {
-                                    pView = pViewSystem->GetViewByEntityId( m_pEntity->GetId() );
+                                    pView = pViewSystem->GetViewByEntityId( m_pEntity->GetId(), pActor != NULL ); // force create view if actor
                                 }
 
                                 if ( pView )
                                 {
                                     pView->Update( gEnv->pTimer->GetFrameTime(), true ); // Force a CPlayer ViewUpdate since otherwise the view isn't updated
-                                    sViewPar = pView->GetCurrentParams();
+                                    sEntityViewPar = pView->GetCurrentParams();
                                 }
                             }
 
 #define CHECK_POINTER(ptr) assert(ptr);if(!ptr)return;
 
                             Vec3 vecCamPos;
+                            Vec3 vecCamPos_Origin;
 
                             switch ( GetPortInt( pActInfo, EIP_APOS ) )
                             {
@@ -247,8 +262,8 @@ namespace CameraPlugin
                                     break;
 
                                 case ETYPE_VIEW:
-                                    CHECK_POINTER( sViewPar );
-                                    vecCamPos = sViewPar->position;
+                                    CHECK_POINTER( sEntityViewPar );
+                                    vecCamPos = sEntityViewPar->position;
                                     break;
 
                                 case ETYPE_BONE:
@@ -273,6 +288,8 @@ namespace CameraPlugin
                                     break;
                             }
 
+                            vecCamPos_Origin = vecCamPos;
+
                             Quat vecCamRot;
 
                             switch ( GetPortInt( pActInfo, EIP_AROT ) )
@@ -283,9 +300,8 @@ namespace CameraPlugin
                                     break;
 
                                 case ETYPE_VIEW:
-                                    CHECK_POINTER( sViewPar );
-                                    vecCamRot = sViewPar->rotation;
-                                    //vecCamRot = pActor->GetViewRotation();
+                                    CHECK_POINTER( sEntityViewPar );
+                                    vecCamRot = sEntityViewPar->rotation;
                                     break;
 
                                 case ETYPE_BONE:
@@ -308,9 +324,6 @@ namespace CameraPlugin
 
                                     break;
                             }
-
-                            //SIKLimb *pLimb = m_pActor->GetIKLimb(m_grabStats.limbId[0]);
-                            //ICharacterInstance *pCharacter = pEnt->GetCharacter(pLimb->characterSlot);
 
                             // Calculate Target offset position
                             Vec3 vecCamPos_offset = GetPortVec3( pActInfo, EIP_TOFFSETPOS );
@@ -416,75 +429,110 @@ namespace CameraPlugin
                             }
 
                             // Apply transformed local offset
-                            // (relative yaw,pitch translation) -> warscheinlich nur für target offset
+                            // (relative yaw,pitch translation) -> only for target offset
                             vecCamPos += Matrix34( pActor->GetViewRotation() ).TransformVector( vecCamPos_offset );
-                            // (relative yaw translation)
-                            //vecCamPos += pActor->GetEntity()->GetLocalTM().TransformVector(vecCamPos_offset);
 
                             // Create Rotation
                             vecCamRot_matrix = CCamera::CreateOrientationYPR( temp );
                             vecCamRot = Quat( vecCamRot_matrix );
 
+                            // Handle Collisions
+                            switch ( GetPortInt( pActInfo, EIP_COLLSION ) )
+                            {
+                                case ECOLLISION_BASIC:
+                                    {
+                                        const int objects = ent_all;
+                                        const int flags = ( geom_colltype_ray << rwi_colltype_bit ) | rwi_colltype_any | ( 10 & rwi_pierceability_mask ) | ( geom_colltype14 << rwi_colltype_bit );
+
+                                        IPhysicalEntity* pSkipEntities[11];
+                                        int nSkip = 0;
+
+                                        if ( pActor )
+                                        {
+                                            pSkipEntities[nSkip++] = pActor->GetEntity()->GetPhysics();
+                                        }
+
+                                        const Vec3 forward = ( vecCamPos - vecCamPos_Origin ).GetNormalizedSafe( Vec3Constants<float>::fVec3_OneY );
+
+                                        // Check for collision
+                                        ray_hit rayhit;
+
+                                        if ( gEnv->pPhysicalWorld->RayWorldIntersection( vecCamPos_Origin, forward * vecCamPos_Origin.GetDistance( vecCamPos ), objects, flags, &rayhit, 1, pSkipEntities, nSkip ) )
+                                        {
+                                            vecCamPos = rayhit.pt;
+                                        }
+
+                                        break;
+                                    }
+                            }
+
+                            // Handle Aimfix
+                            if ( sEntityViewPar && pActor )
+                            {
+                                const int objects = ent_all;
+                                const int flags = ( geom_colltype_ray << rwi_colltype_bit ) | rwi_colltype_any | ( 10 & rwi_pierceability_mask ) | ( geom_colltype14 << rwi_colltype_bit );
+
+                                IItem* pItem = pActor->GetCurrentItem();
+                                IWeapon* pWeapon = pItem ? pItem->GetIWeapon() : NULL;
+
+                                IPhysicalEntity* pSkipEntities[11];
+                                int nSkip = 0;
+                                pSkipEntities[nSkip++] = pActor->GetEntity()->GetPhysics();
+
+                                Vec3 posweapon = sEntityViewPar->position;
+                                Vec3 dirweapon = sEntityViewPar->rotation.GetColumn1();
+
+                                if ( pWeapon )
+                                {
+                                    Vec3 probhit = Vec3( 0, 0, 0 );
+                                    posweapon = pWeapon->GetFiringPos( probhit );
+                                    dirweapon = pWeapon->GetFiringDir( posweapon, probhit );
+                                }
+
+                                dirweapon.Normalize();
+
+                                // Weapon Pos
+                                if ( GetPortBool( pActInfo, EIP_AIMDEBUG ) )
+                                {
+                                    gEnv->pRenderer->GetIRenderAuxGeom()->DrawSphere( posweapon, 0.05f, ColorB( 255, 128, 0 ) );
+                                }
+
+                                // Check where bullet is flying
+                                ray_hit rayhit;
+
+                                if ( gEnv->pPhysicalWorld->RayWorldIntersection( posweapon, dirweapon * WEAPON_HIT_RANGE, objects, flags, &rayhit, 1, pSkipEntities, nSkip ) )
+                                {
+                                    // Hit Ray
+                                    if ( GetPortBool( pActInfo, EIP_AIMDEBUG ) )
+                                    {
+                                        gEnv->pRenderer->GetIRenderAuxGeom()->DrawLine( posweapon, ColorB( 128, 0, 0 ), rayhit.pt, ColorB( 128, 0, 0 ), 6.0f );
+                                    }
+
+                                    // Correct center of screen to target area by rotating view to it
+                                    if ( GetPortBool( pActInfo, EIP_AIMFIX ) )
+                                    {
+                                        Vec3 testv = rayhit.pt - vecCamPos;
+                                        testv.Normalize();
+                                        vecCamRot = Quat::CreateRotationVDir( testv, 0 );
+                                    }
+                                }
+                            }
+
                             // Now Set info in camera entity
                             if ( m_pCameraEnt && m_pCameraView && gEnv && gEnv->pEntitySystem && gEnv->pEntitySystem->FindEntityByName( "PlayerCamera" ) )
                             {
+                                // Handle fov
                                 {
                                     SViewParams sViewPar = *( m_pCameraView->GetCurrentParams() );
                                     sViewPar.fov = DEG2RAD( GetPortFloat( pActInfo, EIP_FOV ) );
                                     m_pCameraView->SetCurrentParams( sViewPar );
                                 }
 
+                                // (calculated pos)
                                 m_pCameraEnt->SetPos( vecCamPos );
 
-                                // (calculated rotation) -> TODO currently throw it out
-                                vecCamRot = sViewPar->rotation;
+                                // (calculated rotation)
                                 m_pCameraEnt->SetRotation( vecCamRot );
-
-                                // Aimfix experiment
-                                if ( GetPortBool( pActInfo, EIP_AIMFIX_EXPERIMENT ) )
-                                {
-                                    const int objects = ent_all;
-                                    const int flags = ( geom_colltype_ray << rwi_colltype_bit ) | rwi_colltype_any | ( 10 & rwi_pierceability_mask ) | ( geom_colltype14 << rwi_colltype_bit );
-
-                                    IItem* pItem = pActor->GetCurrentItem();
-                                    IWeapon* pWeapon = pItem ? pItem->GetIWeapon() : NULL;
-
-                                    IPhysicalEntity* pSkipEntities[11];
-                                    int nSkip = 0;
-
-                                    if ( pWeapon )
-                                    {
-                                        // CWeapon
-                                        //nSkip = pWeapon-> GetSkipEntities( pWeapon, pSkipEntities, 10 );
-                                    }
-
-                                    pSkipEntities[nSkip++] = pActor->GetEntity()->GetPhysics();
-
-                                    Vec3 posweapon = sViewPar->position;
-                                    Vec3 dirweapon = sViewPar->rotation.GetColumn1();
-
-                                    if ( pWeapon )
-                                    {
-                                        Vec3 probhit = Vec3( 0, 0, 0 );
-                                        posweapon = pWeapon->GetFiringPos( probhit );
-                                        dirweapon = pWeapon->GetFiringDir( posweapon, probhit );
-                                    }
-
-                                    dirweapon.Normalize();
-
-                                    ray_hit rayhit;
-
-                                    if ( gEnv->pPhysicalWorld->RayWorldIntersection( posweapon, dirweapon * WEAPON_HIT_RANGE, objects, flags, &rayhit, 1, pSkipEntities, nSkip ) )
-                                    {
-                                        gEnv->pRenderer->GetIRenderAuxGeom()->DrawSphere( posweapon, 0.1f, ColorB( 255, 128, 0 ) );
-                                        gEnv->pRenderer->GetIRenderAuxGeom()->DrawLine( posweapon, ColorB( 128, 0, 0 ), rayhit.pt, ColorB( 128, 0, 0 ), 6.0f );
-
-                                        Vec3 testv = rayhit.pt - vecCamPos;
-                                        testv.Normalize();
-                                        Quat testr = Quat::CreateRotationVDir( testv, 0 );
-                                        m_pCameraEnt->SetRotation( testr );
-                                    }
-                                }
                             }
 
                             else
