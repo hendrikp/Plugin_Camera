@@ -26,7 +26,9 @@
 namespace CameraPlugin
 {
     class CFlowPlayerCameraNode :
-        public CFlowBaseNode<eNCT_Instanced>
+        public CFlowBaseNode<eNCT_Instanced>,
+        public IActionListener
+
     {
         private:
 
@@ -69,6 +71,9 @@ namespace CameraPlugin
             IEntity* m_pEntity;
             IEntity* m_pCameraEnt;
             IView*   m_pCameraView;
+            static TActionHandler<CFlowPlayerCameraNode> s_actionHandler;
+            float tpvZoom;
+
         public:
 
             CFlowPlayerCameraNode( SActivationInfo* pActInfo )
@@ -76,6 +81,114 @@ namespace CameraPlugin
                 m_pEntity       = NULL;
                 m_pCameraEnt    = NULL;
                 m_pCameraView   = NULL;
+                tpvZoom         = 1.0f;
+
+                // Add some mappings to the action maps.
+                IActionMapManager* pActionMapManager = gEnv->pGame->GetIGameFramework()->GetIActionMapManager();
+
+                if ( gEnv && pActionMapManager )
+                {
+                    ActionId tpv_ZoomIn;
+                    ActionId tpv_ZoomOut;
+                    ActionId v_tpv_ZoomIn;
+                    ActionId v_tpv_ZoomOut;
+
+                    tpv_ZoomIn = "tpv_zoom_in";
+                    tpv_ZoomOut = "tpv_zoom_out";
+                    v_tpv_ZoomIn = "v_tpv_zoom_in";
+                    v_tpv_ZoomOut = "v_tpv_zoom_out";
+
+                    // Grab the action map manager.
+                    pActionMapManager->AddExtraActionListener( this );
+
+                    // TODO: find a way to use the action maps from the game env e.g. gEnv->pGame->Actions().tpv_ZoomIn
+
+                    // Add any filters that are needed.
+#define FILTER_ACTION(filter,action) pActionMapManager->GetActionFilter( filter )->Filter( action );
+                    FILTER_ACTION( "no_move", tpv_ZoomIn )
+                    FILTER_ACTION( "no_move", tpv_ZoomOut )
+                    FILTER_ACTION( "no_move", v_tpv_ZoomIn )
+                    FILTER_ACTION( "no_move", v_tpv_ZoomOut )
+                    FILTER_ACTION( "no_mouse", tpv_ZoomIn )
+                    FILTER_ACTION( "no_mouse", tpv_ZoomOut )
+                    FILTER_ACTION( "no_mouse", v_tpv_ZoomIn )
+                    FILTER_ACTION( "no_mouse", v_tpv_ZoomOut )
+                    FILTER_ACTION( "tutorial_no_move", tpv_ZoomIn )
+                    FILTER_ACTION( "tutorial_no_move", tpv_ZoomOut )
+                    FILTER_ACTION( "tutorial_no_move", v_tpv_ZoomIn )
+                    FILTER_ACTION( "tutorial_no_move", v_tpv_ZoomOut )
+                    FILTER_ACTION( "warning_popup", tpv_ZoomIn )
+                    FILTER_ACTION( "warning_popup", tpv_ZoomOut )
+                    FILTER_ACTION( "warning_popup", v_tpv_ZoomIn )
+                    FILTER_ACTION( "warning_popup", v_tpv_ZoomOut )
+                    FILTER_ACTION( "cutscene_player_moving", tpv_ZoomIn )
+                    FILTER_ACTION( "cutscene_player_moving", tpv_ZoomOut )
+                    FILTER_ACTION( "cutscene_player_moving", v_tpv_ZoomIn )
+                    FILTER_ACTION( "cutscene_player_moving", v_tpv_ZoomOut )
+                    FILTER_ACTION( "cutscene_train", tpv_ZoomIn )
+                    FILTER_ACTION( "cutscene_train", tpv_ZoomOut )
+                    FILTER_ACTION( "cutscene_train", v_tpv_ZoomIn )
+                    FILTER_ACTION( "cutscene_train", v_tpv_ZoomOut )
+                    FILTER_ACTION( "scoreboard", tpv_ZoomIn )
+                    FILTER_ACTION( "scoreboard", tpv_ZoomOut )
+                    FILTER_ACTION( "scoreboard", v_tpv_ZoomIn )
+                    FILTER_ACTION( "scoreboard", v_tpv_ZoomOut )
+                    FILTER_ACTION( "infiction_menu", tpv_ZoomIn )
+                    FILTER_ACTION( "infiction_menu", tpv_ZoomOut )
+                    FILTER_ACTION( "infiction_menu", v_tpv_ZoomIn )
+                    FILTER_ACTION( "infiction_menu", v_tpv_ZoomOut )
+                    FILTER_ACTION( "mp_weapon_customization_menu", tpv_ZoomIn )
+                    FILTER_ACTION( "mp_weapon_customization_menu", tpv_ZoomOut )
+                    FILTER_ACTION( "mp_weapon_customization_menu", v_tpv_ZoomIn )
+                    FILTER_ACTION( "mp_weapon_customization_menu", v_tpv_ZoomOut )
+                    FILTER_ACTION( "ledge_grab", tpv_ZoomIn )
+                    FILTER_ACTION( "ledge_grab", tpv_ZoomOut )
+                    FILTER_ACTION( "ledge_grab", v_tpv_ZoomIn )
+                    FILTER_ACTION( "ledge_grab", v_tpv_ZoomOut )
+#undef FILTER_ACTION
+
+                    // Only add the handlers once.
+                    // TODO: look into multiple instances and how it affects this whole section of code.
+                    if ( s_actionHandler.GetNumHandlers() == 0 )
+                    {
+                        // Map the actions to their handlers.
+                        s_actionHandler.AddHandler( tpv_ZoomIn, &CFlowPlayerCameraNode::OnActionZoomIn );
+                        s_actionHandler.AddHandler( tpv_ZoomOut, &CFlowPlayerCameraNode::OnActionZoomOut );
+
+                        // Zoom while in vehicles maps to the same actions.
+                        s_actionHandler.AddHandler( v_tpv_ZoomIn, &CFlowPlayerCameraNode::OnActionZoomIn );
+                        s_actionHandler.AddHandler( v_tpv_ZoomOut, &CFlowPlayerCameraNode::OnActionZoomOut );
+                    }
+                }
+            }
+
+            virtual ~CFlowPlayerCameraNode()
+            {
+                IActionMapManager* pActionMapManager = gEnv->pGame->GetIGameFramework()->GetIActionMapManager();
+
+                if ( gEnv && pActionMapManager )
+                {
+                    pActionMapManager->RemoveExtraActionListener( this );
+                }
+            }
+
+            bool OnActionZoomIn( EntityId entityId, const ActionId& actionId, int activationMode, float value )
+            {
+                tpvZoom = MAX( tpvZoom - 0.05f, 0.0f );
+
+                return false;
+            }
+
+            bool OnActionZoomOut( EntityId entityId, const ActionId& actionId, int activationMode, float value )
+            {
+                tpvZoom = MIN( tpvZoom + 0.05f, 1.0f );
+
+                return false;
+            }
+
+            virtual void OnAction( const ActionId& action, int activationMode, float value )
+            {
+                s_actionHandler.Dispatch( this, 0, action, activationMode, value );
             }
 
             virtual void GetMemoryUsage( ICrySizer* s ) const
@@ -86,11 +199,6 @@ namespace CameraPlugin
             virtual IFlowNodePtr Clone( SActivationInfo* pActInfo )
             {
                 return new CFlowPlayerCameraNode( pActInfo );
-            }
-
-            virtual ~CFlowPlayerCameraNode()
-            {
-
             }
 
             virtual void GetConfiguration( SFlowNodeConfig& config )
@@ -546,6 +654,8 @@ namespace CameraPlugin
                 }
             }
     };
+
+    TActionHandler<CFlowPlayerCameraNode> CFlowPlayerCameraNode::s_actionHandler;
 }
 
 REGISTER_FLOW_NODE_EX( "Plugin_Camera:PlayerCamera", CameraPlugin::CFlowPlayerCameraNode, CFlowPlayerCameraNode );
