@@ -53,6 +53,11 @@ namespace CameraPlugin
                 EIP_AROTBONE,
                 EIP_AIMFIX,
                 EIP_AIMDEBUG,
+
+                // Camera zoom.
+                EIP_TPV_ZOOM,
+                EIP_TPV_ZOOM_MIN,
+                EIP_TPV_ZOOM_MAX,
             };
 
             enum EAnchorType
@@ -71,8 +76,14 @@ namespace CameraPlugin
             IEntity* m_pEntity;
             IEntity* m_pCameraEnt;
             IView*   m_pCameraView;
+
+            // A static handler for the actions we are interested in hooking.
             static TActionHandler<CFlowPlayerCameraNode> s_actionHandler;
+
+            // Determine the level of zoom on the third person camera.
             float tpvZoom;
+            float tpvZoomMin;
+            float tpvZoomMax;
 
         public:
 
@@ -82,12 +93,16 @@ namespace CameraPlugin
                 m_pCameraEnt    = NULL;
                 m_pCameraView   = NULL;
                 tpvZoom         = 1.0f;
+                tpvZoomMin      = 0.0f;
+                tpvZoomMax      = 1.0f;
 
                 // Add some mappings to the action maps.
-                IActionMapManager* pActionMapManager = gEnv->pGame->GetIGameFramework()->GetIActionMapManager();
-
-                if ( gEnv && pActionMapManager )
+                if ( gEnv && gEnv->pGame && gEnv->pGame->GetIGameFramework() && gEnv->pGame->GetIGameFramework()->GetIActionMapManager() )
                 {
+                    // Sugar.
+                    IActionMapManager* pActionMapManager = gEnv->pGame->GetIGameFramework()->GetIActionMapManager();
+
+                    // We can declare the actions and assign their names here, but only as a two step process.
                     ActionId tpv_ZoomIn;
                     ActionId tpv_ZoomOut;
                     ActionId v_tpv_ZoomIn;
@@ -101,9 +116,8 @@ namespace CameraPlugin
                     // Grab the action map manager.
                     pActionMapManager->AddExtraActionListener( this );
 
-                    // TODO: find a way to use the action maps from the game env e.g. gEnv->pGame->Actions().tpv_ZoomIn
-
-                    // Add any filters that are needed.
+                    // The actions for zooming in and out should be filtered, same as other actions. These filters
+                    // are the parts of the game where we do not wish to have that action called.
 #define FILTER_ACTION(filter,action) pActionMapManager->GetActionFilter( filter )->Filter( action );
                     FILTER_ACTION( "no_move", tpv_ZoomIn )
                     FILTER_ACTION( "no_move", tpv_ZoomOut )
@@ -164,24 +178,22 @@ namespace CameraPlugin
 
             virtual ~CFlowPlayerCameraNode()
             {
-                IActionMapManager* pActionMapManager = gEnv->pGame->GetIGameFramework()->GetIActionMapManager();
-
-                if ( gEnv && pActionMapManager )
+                if ( gEnv && gEnv->pGame && gEnv->pGame->GetIGameFramework() && gEnv->pGame->GetIGameFramework()->GetIActionMapManager() )
                 {
-                    pActionMapManager->RemoveExtraActionListener( this );
+                    gEnv->pGame->GetIGameFramework()->GetIActionMapManager()->RemoveExtraActionListener( this );
                 }
             }
 
             bool OnActionZoomIn( EntityId entityId, const ActionId& actionId, int activationMode, float value )
             {
-                tpvZoom = MAX( tpvZoom - 0.05f, 0.0f );
+                tpvZoom = MAX( tpvZoom - 0.05f, tpvZoomMin );
 
                 return false;
             }
 
             bool OnActionZoomOut( EntityId entityId, const ActionId& actionId, int activationMode, float value )
             {
-                tpvZoom = MIN( tpvZoom + 0.05f, 1.0f );
+                tpvZoom = MIN( tpvZoom + 0.05f, tpvZoomMax );
 
                 return false;
             }
@@ -228,6 +240,11 @@ namespace CameraPlugin
                     InputPortConfig<string>( "bone_RotationAnchor",  "",                 _HELP( "Rotation Anchor Bone" ),                  "Rotation Anchor Bone",         _UICONFIG( "ref_entity=entityId" ) ),
                     InputPortConfig<bool>( "aimfix",                false,               _HELP( "Experimental Aim correction" ),           "Aim Correction" ),
                     InputPortConfig<bool>( "aimdebug",              false,               _HELP( "Draw Aim debug information" ),            "Aim Debug" ),
+
+                    // Camera zoom.
+                    InputPortConfig<float>( "TpvZoom",              1.0f,                _HELP( "Camera zoom" ) ),
+                    InputPortConfig<float>( "TpvZoomMin",           0.0f,                _HELP( "Minimum amount we allow the camera to zoom" ) ),
+                    InputPortConfig<float>( "TpvZoomMax",           1.0f,                _HELP( "Maximum amount we allow the camera to zoom" ) ),
 
                     InputPortConfig_Null(),
                 };
@@ -280,6 +297,11 @@ namespace CameraPlugin
                                     gEnv->pGame->GetIGameFramework()->GetIViewSystem()->SetActiveView( m_pCameraView );
                                 }
                             }
+
+                            // Camera zoom settings.
+                            tpvZoom = GetPortFloat( pActInfo, EIP_TPV_ZOOM );
+                            tpvZoomMin = GetPortFloat( pActInfo, EIP_TPV_ZOOM_MIN );
+                            tpvZoomMax = GetPortFloat( pActInfo, EIP_TPV_ZOOM_MAX );
                         }
 
                         break;
@@ -434,7 +456,9 @@ namespace CameraPlugin
                             }
 
                             // Calculate Target offset position
-                            Vec3 vecCamPos_offset = GetPortVec3( pActInfo, EIP_TOFFSETPOS );
+                            // TODO: for now I've added a cheap way to zoom the camera in and out, mainly for
+                            // test purposes. This needs more work to make it into a good camera.
+                            Vec3 vecCamPos_offset = GetPortVec3( pActInfo, EIP_TOFFSETPOS ) * tpvZoom;
 
                             // Calculate Camera offset rotation
                             Matrix33 vecCamRot_matrix( vecCamRot );
