@@ -400,7 +400,11 @@ namespace CameraPlugin
                                     CHECK_POINTER( pAnimCharacter );
                                     CHECK_POINTER( pPose );
 
+#if CDK_VERSION <= 354
                                     int16 nBoneid = pPose->GetJointIDByName( GetPortString( pActInfo, EIP_APOSBONE ) );
+#else
+                                    int16 nBoneid = pCharacter->GetIDefaultSkeleton().GetJointIDByName( GetPortString( pActInfo, EIP_APOSBONE ) );
+#endif
 
                                     if ( nBoneid >= 0 )
                                     {
@@ -437,7 +441,11 @@ namespace CameraPlugin
                                 case ETYPE_BONE:
                                     CHECK_POINTER( pAnimCharacter );
                                     CHECK_POINTER( pPose );
+#if CDK_VERSION <= 354
                                     int16 nBoneid = pPose->GetJointIDByName( GetPortString( pActInfo, EIP_AROTBONE ) );
+#else
+                                    int16 nBoneid = pCharacter->GetIDefaultSkeleton().GetJointIDByName( GetPortString( pActInfo, EIP_AROTBONE ) );
+#endif
 
                                     if ( nBoneid >= 0 )
                                     {
